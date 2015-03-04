@@ -116,6 +116,8 @@ dsOppts['HasCSP'] = dsOppts.apply(lambda x: 0 if pd.isnull(x['new_csp']) else 1,
 # Has SSP - column not in the file
 #dsOppts['HasSSP'] = dsOppts.apply(lambda x: 0 if pd.isnull(x['new_bdm']) else 1, axis=1)
 
+# Set Sales Stage Code for Lost Oppts to 100000002.1 (Sales Stage Code average for Lost Oppts)
+dsOppts.loc[(dsOppts['StateCode'] == 2), 'new_salesstagecode'] = 100000002.1
 
 
 ### Separate data
@@ -140,14 +142,14 @@ WonLostOppts_labels = WonLostOppts.filter(['StateCode'])
 WonLostOppts_features = WonLostOppts.filter(
     ['DaysOpen', 'NumberOpptsForAcctMarket', 'CreatedOnMonth', 'CreatedOnYear',
      'NumberLostOpptsForAcct', 'NumberWonOpptsForAcct',
-     'new_changerequest', 'new_noofresources',
+     'new_changerequest', 'new_noofresources', 'new_salesstagecode',
      'new_reopenedopportunity', 'new_winwireinclusion',
      'ProjectDuration', 'HasBDM', 'HasCSP'])
 
 OpenOppts_features = OpenOppts.filter(
     ['DaysOpen', 'NumberOpptsForAcctMarket', 'CreatedOnMonth', 'CreatedOnYear',
      'NumberLostOpptsForAcct', 'NumberWonOpptsForAcct',
-     'new_changerequest', 'new_noofresources',
+     'new_changerequest', 'new_noofresources', 'new_salesstagecode',
      'new_reopenedopportunity', 'new_winwireinclusion',
      'ProjectDuration', 'HasBDM', 'HasCSP'])
 
@@ -157,8 +159,8 @@ primaryworktag_dummy_units = pd.get_dummies(dsOppts['new_primaryworktag'], prefi
 billingtype_dummy_units = pd.get_dummies(dsOppts['new_billingtype'], prefix='billingtype')
 projecttype_dummy_units = pd.get_dummies(dsOppts['new_projecttype'], prefix='projecttype')
 
-WonLostOppts_features = WonLostOppts_features.join(functionalarea_dummy_units).join(primaryworktag_dummy_units).join(billingtype_dummy_units).join(projecttype_dummy_units)
-OpenOppts_features = OpenOppts_features.join(functionalarea_dummy_units).join(primaryworktag_dummy_units).join(billingtype_dummy_units).join(projecttype_dummy_units)
+WonLostOppts_features = WonLostOppts_features.join(functionalarea_dummy_units).join(primaryworktag_dummy_units).join(projecttype_dummy_units).join(billingtype_dummy_units)
+OpenOppts_features = OpenOppts_features.join(functionalarea_dummy_units).join(primaryworktag_dummy_units).join(projecttype_dummy_units).join(billingtype_dummy_units)
 
 
 # Train x Test data split
@@ -201,6 +203,8 @@ if __name__ == '__main__':
     print "precision: ", precision_score(label_test, predictions)
     print "recall", recall_score(label_test, predictions)
 
+    #print metrics.confusion_matrix(y_test, predicted)
+    #print metrics.classification_report(y_test, predicted)
 
     # get Open Oppts
     openOppts_predictions = clf.predict(OpenOppts_features)

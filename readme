@@ -42,3 +42,18 @@ Intended Features
 - # of Won Oppt for Account
 - # of Oppt for Account and Market
 - Market
+- Sales Stage Code
+
+
+Notes:
+- with Sales Stage Code as is, model predicted only 20 Won (CRM had 78), but got 19 correctly. Planning on setting Sales Statge Code for Won and Lost to 100000005
+    - with new CRM file. Model said 32 Won, in CRM: 27 Won and 5 Lost. Total CRM Won: 127
+- with Sales Stage Code as 99999999 for Lost Oppts, model predicted 161 Lost Oppts, and out of those, 153 were Lost in CRM. CRM had 249 total Lost Oppt.
+- with Sales Stage Code as 100000002.1 (Sales Stage Code average for Lost Oppts) for Lost Oppts,
+    - model predicted 265 Lost Oppts, and out of those, 223 were Lost in CRM. CRM had 249 total Lost Oppt. - 89.55%
+    - model predicted 111 Won Oppts, and out of those, 88 were Won in CRM. CRM had 127 total Won Oppt. - 69.3%
+    - Lost rate = 66.22%
+    - Win rate = 33.77%
+    - General model accuracy: 83.51% - code has a .merge() by Oppt. name. There are duplicated Oppt names, cause a few Oppts (5 or so. dropping accuracy to 82.71%) to appear twice in the excel file. Will deal with that later.
+
+
