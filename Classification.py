@@ -186,7 +186,7 @@ if __name__ == '__main__':
         'tree__random_state': [1, 2, 10, 20, 42],
     }
 
-    clf = GridSearchCV(clf, param_grid, scoring="recall", verbose=1, n_jobs=-1)
+    clf = GridSearchCV(clf, param_grid, scoring="accuracy", verbose=1, n_jobs=-1)
 
     clf = clf.fit(features_train, label_train)
 
@@ -221,7 +221,7 @@ if __name__ == '__main__':
 
     #OpenOppts.to_csv('data/output_LogisticRegression.csv')
 
-    dsInternalCRMOppts = pd.read_csv('data/InternalCRMOppts2.csv', low_memory=False)
+    dsInternalCRMOppts = pd.read_csv('data/InternalCRMOppts3.csv', low_memory=False)
     dsInternalCRMOppts = dsInternalCRMOppts.filter(['Opportunity Name', 'Status'])
     dsInternalCRMOppts['StateCode'] = dsInternalCRMOppts.apply(lambda x: 1 if x['Status'] == 'Won' else 0, axis=1)
 

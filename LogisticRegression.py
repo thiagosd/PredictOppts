@@ -174,25 +174,25 @@ if __name__ == '__main__':
     ### Normalize Data
     scaler = StandardScaler()
 
-    clf = LogisticRegression()
+    clf = LogisticRegression(C=100.)
     estimator_tree = [('scaler', scaler), ('tree', clf)]
     clf = Pipeline(estimator_tree)
-
+    '''
     param_grid = {
         'tree__C': [1.0, 10.0, 100.0],
         'tree__penalty': ['l1', 'l2']
     }
 
     clf = GridSearchCV(clf, param_grid, scoring="accuracy", verbose=1, n_jobs=-1)
-
+    '''
     clf = clf.fit(features_train, label_train)
 
     # check the accuracy on the training set
     print clf.score(features_train, label_train)
     # examine the coefficients
-    print pd.DataFrame(zip(WonLostOppts_features.columns, np.transpose(clf.best_estimator_.steps[1][1].coef_)))
-    print "Best estimator found by grid search:"
-    print clf.best_estimator_
+    print pd.DataFrame(zip(WonLostOppts_features.columns, np.transpose(clf.steps[1][1].coef_)))
+    #print "Best estimator found by grid search:"
+    #print clf.best_estimator_
 
     predictions = clf.predict(features_test)
 
@@ -211,7 +211,7 @@ if __name__ == '__main__':
 
     #OpenOppts.to_csv('data/output_LogisticRegression.csv')
 
-    dsInternalCRMOppts = pd.read_csv('data/InternalCRMOppts2.csv', low_memory=False)
+    dsInternalCRMOppts = pd.read_csv('data/InternalCRMOppts3.csv', low_memory=False)
     dsInternalCRMOppts = dsInternalCRMOppts.filter(['Opportunity Name', 'Status'])
     dsInternalCRMOppts['StateCode'] = dsInternalCRMOppts.apply(lambda x: 1 if x['Status'] == 'Won' else 0, axis=1)
 
