@@ -182,7 +182,7 @@ if __name__ == '__main__':
         'tree__C': [1.0, 10.0, 100.0],
         'tree__penalty': ['l1', 'l2']
     }
-    dd = "w"
+
     clf = GridSearchCV(clf, param_grid, scoring="accuracy", verbose=1, n_jobs=-1)
 
     clf = clf.fit(features_train, label_train)
