@@ -1,0 +1,43 @@
+#!/bin/sh
+
+Initial CSV file: 38647 Opportunities.
+
+Data cleanup steps:
+1) Remove Test Oppts: 34
+2) Remove 'Estimated Value' outliers: 81
+3) Remove 'Estimated Close Date' putliers: 2
+Total Oppts: 38530
+4) Replace 'NULL' with empty space
+5) ~5K Oppts mass imported on 05/07/2010. Some were retroactive, causing wrong dates. Removed on code.
+
+Data enhancement:
+1) 244 Open Oppts have 'Actual Close Date' value. CRM bug ?
+2) Set 'Market' value for 12 Oppts. Got value from 'Created By' user.
+
+Intended Features
+- CreatedOn (split in Year, Month and Day features)
+- Billing Frequency
+- Cost Center
+- Functional Area
+- National Support
+- # of Resources
+- Project Type
+- Reopened Oppt.
+- Specialty
+- Win Wire Inclusion
+- Est. Bill Rate
+- Primary Work Tag
+- Project Duration
+- Days Open
+- # of Emails for Oppt.
+- # of Meetings for Oppt.
+- # of Tasks for Oppt.
+- Has BDM
+- Has CSP
+- Has SSP
+- # of Oppt for Account
+- # of Lost Oppt for Account
+- # of Open Oppt for Account
+- # of Won Oppt for Account
+- # of Oppt for Account and Market
+- Market
