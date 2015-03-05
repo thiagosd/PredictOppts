@@ -57,3 +57,20 @@ Notes:
     - General model accuracy: 83.51% - code has a .merge() by Oppt. name. There are duplicated Oppt names, cause a few Oppts (5 or so. dropping accuracy to 82.71%) to appear twice in the excel file. Will deal with that later.
 
 
+    - with Sales Stage Code as coded Sales Stage Code average for Lost Oppts and changed DaysOpen value when DaysOpen < 0. It used to be 0, but now set to DaysOpen average.
+        - Best estimator found by grid search:
+            Pipeline(steps=[('scaler', StandardScaler(copy=True, with_mean=True, with_std=True)), ('tree', LogisticRegression(C=100.0, class_weight=None, dual=False, fit_intercept=True,
+                intercept_scaling=1, penalty='l1', random_state=None, tol=1e-06))])
+        - results:
+            - predicted 124 Won Oppt, got 97 correctly. CRM had 127 Won Oppt. - 76.37%
+            - predicted 252 Lost Oppt, got 222 correctly. CRM had 249 Lost Oppt. - 89.15%
+
+another one:
+            Best estimator found by grid search:
+Pipeline(steps=[('scaler', StandardScaler(copy=True, with_mean=True, with_std=True)), ('tree', LogisticRegression(C=10.0, class_weight=None, dual=False, fit_intercept=True,
+          intercept_scaling=1, penalty='l1', random_state=None, tol=0.0001))])
+acc:  1.0
+precision:  1.0
+recall 1.0
+319 57
+(Won 96 out of 122)

@@ -72,8 +72,8 @@ dsOppts['ValueDifference'] = dsOppts.apply(
 # Days Open: CreatedOn - ActualCloseDate. For Open Oppts, Today's Date - CreatedOn
 dsOppts['DaysOpen'] = dsOppts.apply(lambda x: (todays_date - x['CreatedOn']).days if x['StateCode'] == 0 else (
     x['ActualCloseDate'] - x['CreatedOn']).days, axis=1)
-# Some DaysOpen are negative because Create On date is prior to Actual Close Date, set it to 0 when thats the case
-dsOppts.loc[dsOppts['DaysOpen'] < 0, 'DaysOpen'] = 0
+# Some DaysOpen are negative because Create On date is prior to Actual Close Date, set it to DaysOpen Mean when thats the case
+dsOppts.loc[dsOppts['DaysOpen'] < 0, 'DaysOpen'] = dsOppts['DaysOpen'].mean()
 
 # Days to Close each Stage
 # not possible. no access to Audit entity.
@@ -114,10 +114,12 @@ dsOppts['HasBDM'] = dsOppts.apply(lambda x: 0 if pd.isnull(x['new_bdm']) else 1,
 # Has CSP
 dsOppts['HasCSP'] = dsOppts.apply(lambda x: 0 if pd.isnull(x['new_csp']) else 1, axis=1)
 # Has SSP - column not in the file
-#dsOppts['HasSSP'] = dsOppts.apply(lambda x: 0 if pd.isnull(x['new_bdm']) else 1, axis=1)
+# dsOppts['HasSSP'] = dsOppts.apply(lambda x: 0 if pd.isnull(x['new_bdm']) else 1, axis=1)
 
-# Set Sales Stage Code for Lost Oppts to 100000002.1 (Sales Stage Code average for Lost Oppts)
-dsOppts.loc[(dsOppts['StateCode'] == 2), 'new_salesstagecode'] = 100000002.1
+
+# Set Sales Stage Code for Lost Oppts to ~100000002.1 (Sales Stage Code average for Lost Oppts)
+dsOppts.loc[(dsOppts['StateCode'] == 2), 'new_salesstagecode'] = dsOppts[dsOppts['StateCode'] == 2][
+    'new_salesstagecode'].mean()
 
 
 ### Separate data
@@ -159,8 +161,10 @@ primaryworktag_dummy_units = pd.get_dummies(dsOppts['new_primaryworktag'], prefi
 billingtype_dummy_units = pd.get_dummies(dsOppts['new_billingtype'], prefix='billingtype')
 projecttype_dummy_units = pd.get_dummies(dsOppts['new_projecttype'], prefix='projecttype')
 
-WonLostOppts_features = WonLostOppts_features.join(functionalarea_dummy_units).join(primaryworktag_dummy_units).join(projecttype_dummy_units).join(billingtype_dummy_units)
-OpenOppts_features = OpenOppts_features.join(functionalarea_dummy_units).join(primaryworktag_dummy_units).join(projecttype_dummy_units).join(billingtype_dummy_units)
+WonLostOppts_features = WonLostOppts_features.join(functionalarea_dummy_units).join(primaryworktag_dummy_units).join(
+    projecttype_dummy_units).join(billingtype_dummy_units)
+OpenOppts_features = OpenOppts_features.join(functionalarea_dummy_units).join(primaryworktag_dummy_units).join(
+    projecttype_dummy_units).join(billingtype_dummy_units)
 
 
 # Train x Test data split
@@ -171,7 +175,6 @@ features_train, features_test, label_train, label_test = sklearn.cross_validatio
 label_train = np.squeeze(label_train)
 label_test = np.squeeze(label_test)
 
-
 if __name__ == '__main__':
     ### Normalize Data
     scaler = StandardScaler()
@@ -179,22 +182,23 @@ if __name__ == '__main__':
     clf = LogisticRegression(C=100.)
     estimator_tree = [('scaler', scaler), ('tree', clf)]
     clf = Pipeline(estimator_tree)
-    '''
+
     param_grid = {
-        'tree__C': [1.0, 10.0, 100.0],
-        'tree__penalty': ['l1', 'l2']
+        'tree__C': [1.0, 10.0, 100.0, 1000.0],
+        'tree__penalty': ['l1', 'l2']  #,
+        #'tree__tol': [0.00001, 0.0001, 0.001]
     }
 
     clf = GridSearchCV(clf, param_grid, scoring="accuracy", verbose=1, n_jobs=-1)
-    '''
+
     clf = clf.fit(features_train, label_train)
 
     # check the accuracy on the training set
     print clf.score(features_train, label_train)
     # examine the coefficients
-    print pd.DataFrame(zip(WonLostOppts_features.columns, np.transpose(clf.steps[1][1].coef_)))
-    #print "Best estimator found by grid search:"
-    #print clf.best_estimator_
+    print pd.DataFrame(zip(WonLostOppts_features.columns, np.transpose(clf.best_estimator_.steps[1][1].coef_)))
+    print "Best estimator found by grid search:"
+    print clf.best_estimator_
 
     predictions = clf.predict(features_test)
 
