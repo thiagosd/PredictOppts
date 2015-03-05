@@ -74,3 +74,16 @@ precision:  1.0
 recall 1.0
 319 57
 (Won 96 out of 122)
+
+
+again
+Best estimator found by grid search:
+Pipeline(steps=[('scaler', StandardScaler(copy=True, with_mean=True, with_std=True)), ('tree', LogisticRegression(C=100.0, class_weight=None, dual=False, fit_intercept=True,
+          intercept_scaling=1, penalty='l1', random_state=None, tol=1e-06))])
+acc:  1.0
+precision:  1.0
+recall 1.0
+319 57
+97 out of 124 Predicted Won
+
+fuck sales stage code. biased features.

@@ -72,8 +72,8 @@ dsOppts['ValueDifference'] = dsOppts.apply(
 # Days Open: CreatedOn - ActualCloseDate. For Open Oppts, Today's Date - CreatedOn
 dsOppts['DaysOpen'] = dsOppts.apply(lambda x: (todays_date - x['CreatedOn']).days if x['StateCode'] == 0 else (
     x['ActualCloseDate'] - x['CreatedOn']).days, axis=1)
-# Some DaysOpen are negative because Create On date is prior to Actual Close Date, set it to 0 when thats the case
-dsOppts.loc[dsOppts['DaysOpen'] < 0, 'DaysOpen'] = 0
+# Some DaysOpen are negative because Create On date is prior to Actual Close Date, set it to DaysOpen Mean when thats the case
+dsOppts.loc[dsOppts['DaysOpen'] < 0, 'DaysOpen'] = dsOppts['DaysOpen'].mean()
 
 # Days to Close each Stage
 # not possible. no access to Audit entity.
@@ -114,8 +114,12 @@ dsOppts['HasBDM'] = dsOppts.apply(lambda x: 0 if pd.isnull(x['new_bdm']) else 1,
 # Has CSP
 dsOppts['HasCSP'] = dsOppts.apply(lambda x: 0 if pd.isnull(x['new_csp']) else 1, axis=1)
 # Has SSP - column not in the file
-#dsOppts['HasSSP'] = dsOppts.apply(lambda x: 0 if pd.isnull(x['new_bdm']) else 1, axis=1)
+# dsOppts['HasSSP'] = dsOppts.apply(lambda x: 0 if pd.isnull(x['new_bdm']) else 1, axis=1)
 
+
+# Set Sales Stage Code for Lost Oppts to ~100000002.1 (Sales Stage Code average for Lost Oppts)
+dsOppts.loc[(dsOppts['StateCode'] == 2), 'new_salesstagecode'] = dsOppts[dsOppts['StateCode'] == 2][
+    'new_salesstagecode'].mean()
 
 
 ### Separate data
@@ -140,25 +144,27 @@ WonLostOppts_labels = WonLostOppts.filter(['StateCode'])
 WonLostOppts_features = WonLostOppts.filter(
     ['DaysOpen', 'NumberOpptsForAcctMarket', 'CreatedOnMonth', 'CreatedOnYear',
      'NumberLostOpptsForAcct', 'NumberWonOpptsForAcct',
-     'new_changerequest', 'new_noofresources',
+     'new_changerequest', 'new_noofresources', 'new_salesstagecode',
      'new_reopenedopportunity', 'new_winwireinclusion',
      'ProjectDuration', 'HasBDM', 'HasCSP'])
 
 OpenOppts_features = OpenOppts.filter(
     ['DaysOpen', 'NumberOpptsForAcctMarket', 'CreatedOnMonth', 'CreatedOnYear',
      'NumberLostOpptsForAcct', 'NumberWonOpptsForAcct',
-     'new_changerequest', 'new_noofresources',
+     'new_changerequest', 'new_noofresources', 'new_salesstagecode',
      'new_reopenedopportunity', 'new_winwireinclusion',
      'ProjectDuration', 'HasBDM', 'HasCSP'])
 
 # Convert Categorical features into dummy features
 functionalarea_dummy_units = pd.get_dummies(dsOppts['new_functionalarea'], prefix='functionalarea')
 primaryworktag_dummy_units = pd.get_dummies(dsOppts['new_primaryworktag'], prefix='primaryworktag')
-#billingtype_dummy_units = pd.get_dummies(dsOppts['new_billingtype'], prefix='billingtype')
+billingtype_dummy_units = pd.get_dummies(dsOppts['new_billingtype'], prefix='billingtype')
 projecttype_dummy_units = pd.get_dummies(dsOppts['new_projecttype'], prefix='projecttype')
 
-WonLostOppts_features = WonLostOppts_features.join(functionalarea_dummy_units).join(primaryworktag_dummy_units).join(projecttype_dummy_units)
-OpenOppts_features = OpenOppts_features.join(functionalarea_dummy_units).join(primaryworktag_dummy_units).join(projecttype_dummy_units)
+WonLostOppts_features = WonLostOppts_features.join(functionalarea_dummy_units).join(primaryworktag_dummy_units).join(
+    projecttype_dummy_units).join(billingtype_dummy_units)
+OpenOppts_features = OpenOppts_features.join(functionalarea_dummy_units).join(primaryworktag_dummy_units).join(
+    projecttype_dummy_units).join(billingtype_dummy_units)
 
 
 # Train x Test data split
@@ -168,7 +174,6 @@ features_train, features_test, label_train, label_test = sklearn.cross_validatio
 # Remove single-dimensional entries from the shape of an array.
 label_train = np.squeeze(label_train)
 label_test = np.squeeze(label_test)
-
 
 if __name__ == '__main__':
     ### Normalize Data
