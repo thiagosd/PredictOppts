@@ -1,4 +1,6 @@
 from pandas._testing import isnull
+from pandas.util.testing import Series
+from sklearn.decomposition import RandomizedPCA
 from sklearn.svm import SVR, LinearSVC
 
 __author__ = 'Thiago'
@@ -13,19 +15,13 @@ import sklearn
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
-from matplotlib import pyplot
+import matplotlib.pyplot as plt
 
+'''
 # Load the data
 dsOppts = pd.read_csv('data/AllOppts.csv', low_memory=False)
-dsWonEmails = pd.read_csv('data/Email_Won_Oppts.csv', low_memory=False)
-dsLostOpenEmailsOppts = pd.read_csv('data/Email_Lost_Open_Oppts.csv', low_memory=False)
-
 
 ### Clean up data
-
-# concatenate Email Dataframes
-dsEmails = pd.concat([dsWonEmails, dsLostOpenEmailsOppts])
-
 # Remove Won Oppts with $0 or NULL Actual Value
 dsOppts.drop(dsOppts.index[(dsOppts['StateCode'] == 1) & (dsOppts['ActualValue'] == 0)], inplace=True)
 dsOppts.drop(dsOppts.index[(dsOppts['StateCode'] == 1) & (isnull(dsOppts['ActualValue']))], inplace=True)
@@ -73,26 +69,22 @@ dsOppts['ProjectDuration'] = dsOppts.apply(lambda x: projdurationmean if (
     isnull(x['new_projectend']) | isnull(x['new_projectstart']) | (x['new_projectend'] < x['new_projectstart'])) else (
     x['new_projectend'] - x['new_projectstart']).days, axis=1)
 
-
-# Lost Oppts have ActualValue == 0. Set ActualValue as EstimatedValue
-dsOppts.loc[
-    (dsOppts['StateCode'] != 1) & (dsOppts['ActualValue'] == 0 | isnull(dsOppts['ActualValue'])), 'ActualValue'] = \
-    dsOppts['EstimatedValue']
-# dsOppts.loc[(isnull(dsOppts['ActualValue']) | dsOppts['ActualValue'] == 0), 'ActualValue'] = dsOppts['EstimatedValue']
-
-# Value Difference
-print type(dsOppts['ActualValue'])
-dsOppts['ValueDifference'] = dsOppts.apply(lambda x: 0 if (x['ActualValue'] == 0) else (
-    x['ActualValue'] - x['EstimatedValue']), axis=1)
+dsOppts['ValueDifference'] = dsOppts.apply(
+    lambda x: 0 if x['ActualValue'] == 0 else (x['EstimatedValue'] - x['ActualValue']), axis=1)
 
 # Days Open: CreatedOn - ActualCloseDate. For Open Oppts, Today's Date - CreatedOn
 dsOppts['DaysOpen'] = dsOppts.apply(lambda x: (todays_date - x['CreatedOn']).days if x['StateCode'] == 0 else (
     x['ActualCloseDate'] - x['CreatedOn']).days, axis=1)
 # Some DaysOpen are negative because Create On date is prior to Actual Close Date, set it to Days Open average when thats the case
+DaysOpenAvg = dsOppts['DaysOpen'].mean()
 dsOppts.loc[dsOppts['DaysOpen'] < 0, 'DaysOpen'] = dsOppts['DaysOpen'].mean()
 
 # Days to Close each Stage
-# not possible. no access to Audit History data.
+# not possible. no access to Audit entity.
+
+# Days Per Stage
+dsOppts['DaysPerSalesStage'] = dsOppts.apply(lambda x: (x['DaysOpen'] / (x['new_salesstagecode'] - 99999999)), axis=1)
+print dsOppts['DaysPerSalesStage']
 
 # Number of Oppts for this Account
 oppts_by_acct = dsOppts.groupby(['new_parentaccount'])['new_parentaccount'].count()
@@ -130,27 +122,26 @@ dsOppts['HasBDM'] = dsOppts.apply(lambda x: 0 if pd.isnull(x['new_bdm']) else 1,
 # Has CSP
 dsOppts['HasCSP'] = dsOppts.apply(lambda x: 0 if pd.isnull(x['new_csp']) else 1, axis=1)
 # Has SSP - column not in the file
-# dsOppts['HasSSP'] = dsOppts.apply(lambda x: 0 if pd.isnull(x['new_bdm']) else 1, axis=1)
+#dsOppts['HasSSP'] = dsOppts.apply(lambda x: 0 if pd.isnull(x['new_bdm']) else 1, axis=1)
 
-# Number of Emails per Oppt
+
+
+### Separate data
+#dsOppts.fillna(dsOppts.mean(skipna=True), inplace=True)
+dsOppts.fillna(dsOppts.mean(skipna=True), inplace=True)
+
+dsOppts.to_csv('data/dsOppts.csv')
+'''
+dsOppts = pd.read_csv('data/dsOppts.csv', low_memory=False)
+dsWonEmails = pd.read_csv('data/Email_Won_Oppts.csv', low_memory=False)
+dsLostOpenEmailsOppts = pd.read_csv('data/Email_Lost_Open_Oppts.csv', low_memory=False)
+dsEmails = pd.concat([dsWonEmails, dsLostOpenEmailsOppts])
+
+# Count number of Emails per Oppt
 emails_by_oppt = dsEmails.groupby(['Regarding'])['Regarding'].count()
 dsOppts['NumberEmailsForOppt'] = dsOppts.apply(
     lambda x: 0 if x['Name'] not in emails_by_oppt.index else emails_by_oppt[x['Name']], axis=1)
 
-# Days Per Stage
-dsOppts['DaysPerSalesStage'] = dsOppts.apply(lambda x: (x['DaysOpen'] / (x['new_salesstagecode'] - 99999999)), axis=1)
-
-# decrease sales stage code
-dsOppts['new_salesstagecode'] = (dsOppts['new_salesstagecode'] - 99999999)
-
-
-### Separate data
-# dsOppts.fillna(dsOppts.mean(skipna=True), inplace=True)
-dsOppts.fillna(dsOppts.mean(skipna=True), inplace=True)
-
-dsOppts.to_csv('data/dsOppts.csv')
-
-# dsOppts = pd.read_csv('data/dsOppts.csv', low_memory=False)
 
 # use Won and Lost Oppts for train/test, and predict StateCode of Open Oppts
 WonLostOppts = dsOppts[(dsOppts['StateCode'] == 1) | (dsOppts['StateCode'] == 2)]
@@ -161,27 +152,26 @@ OpenOppts.is_copy = False
 # change StateCode values to represent percentage. 0 = Lost. 1 = Won.
 WonLostOppts.loc[WonLostOppts['StateCode'] == 2, 'StateCode'] = 0
 
+WonLostOppts['DaysToClose'] = dsOppts['DaysOpen']
 ### Prediction
 
 # set Label
-WonLostOppts_labels = WonLostOppts.filter(['StateCode'])
+WonLostOppts_labels = WonLostOppts.filter(['DaysToClose'])
 
 # set Features
 WonLostOppts_features = WonLostOppts.filter(
-    ['DaysOpen', 'CreatedOnMonth', 'CreatedOnYear',
-     'NumberLostOpptsForAcct', 'NumberWonOpptsForAcct', 'NumberOpenOpptsForAcct',
-     'new_changerequest', 'new_noofresources', 'ActualValue',
-     'new_reopenedopportunity', 'new_winwireinclusion', 'new_salesstagecode',
-     'ProjectDuration', 'HasBDM', 'HasCSP',
-     'NumberEmailsForOppt', 'DaysPerSalesStage'])
+    ['NumberOpptsForAcctMarket', 'CreatedOnMonth', 'CreatedOnYear',
+     'NumberLostOpptsForAcct', 'NumberWonOpptsForAcct', 'DaysPerSalesStage',
+     'new_changerequest', 'new_noofresources', 'NumberEmailsForOppt',
+     'new_reopenedopportunity', 'new_winwireinclusion', 'StateCode',
+     'ProjectDuration'])
 
 OpenOppts_features = OpenOppts.filter(
-    ['DaysOpen', 'CreatedOnMonth', 'CreatedOnYear',
-     'NumberLostOpptsForAcct', 'NumberWonOpptsForAcct', 'NumberOpenOpptsForAcct',
-     'new_changerequest', 'new_noofresources', 'ActualValue',
-     'new_reopenedopportunity', 'new_winwireinclusion', 'new_salesstagecode',
-     'ProjectDuration', 'HasBDM', 'HasCSP',
-     'NumberEmailsForOppt', 'DaysPerSalesStage'])
+    ['NumberOpptsForAcctMarket', 'CreatedOnMonth', 'CreatedOnYear',
+     'NumberLostOpptsForAcct', 'NumberWonOpptsForAcct', 'DaysPerSalesStage',
+     'new_changerequest', 'new_noofresources', 'NumberEmailsForOppt',
+     'new_reopenedopportunity', 'new_winwireinclusion', 'StateCode',
+     'ProjectDuration'])
 
 # Convert Categorical features into dummy features
 functionalarea_dummy_units = pd.get_dummies(dsOppts['new_functionalarea'], prefix='functionalarea')
@@ -206,46 +196,72 @@ label_test = np.squeeze(label_test)
 if __name__ == '__main__':
     ### Normalize Data
     scaler = StandardScaler()
+    pca = RandomizedPCA()
 
-    clf = LogisticRegression()
-    estimator_tree = [('scaler', scaler), ('tree', clf)]
-    clf = Pipeline(estimator_tree)
-
+    regr = SVR(kernel='linear')
+    estimator_tree = [('scaler', scaler), ('tree', regr)]
+    regr = Pipeline(estimator_tree)
+    '''
     param_grid = {
-        'tree__C': [0.1, 1.0, 10.0, 100.0, 1000.0, 10000., 100000., 1000000.],
+        'tree__C': [1.0, 10.0, 20.0, 100.0, 1000.0, 10000.0, 10000.0],
         'tree__penalty': ['l1', 'l2'],
-        'tree__tol': [1e-06, 1e-05, 1e-04, 1e-03, 1e-02, 1e-01, 1.0, 5.0, 10.0]
+        'tree__tol': [0.000000001, 0.00000001, 0.0000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0],
+        'pca__n_components': [3, 7, 15, 25, 41, 30, 35, 38]
     }
     clf = GridSearchCV(clf, param_grid, scoring="recall", verbose=1, n_jobs=-1)
-
-    clf = clf.fit(features_train, label_train)
+    '''
+    regr = regr.fit(features_train, label_train)
 
     # check the accuracy on the training set
-    print clf.score(features_train, label_train)
+    print regr.score(features_train, label_train)
     # examine the coefficients
-    print pd.DataFrame(zip(WonLostOppts_features.columns, np.transpose(clf.best_estimator_.steps[1][1].coef_)))
-    print "Best estimator found by grid search:"
-    print clf.best_estimator_
+    # print pd.DataFrame(zip(WonLostOppts_features.columns, np.transpose(clf.steps[1][1].coef_)))
+    #print "Best estimator found by grid search:"
+    #print clf.best_estimator_
+    #print "Grid Scores"
+    #print clf.grid_scores_
 
-    predictions = clf.predict(features_test)
+    predictions = regr.predict(features_test)
 
-    accuracy = accuracy_score(label_test, predictions)
-    print "acc: ", accuracy
-    print "precision: ", precision_score(label_test, predictions)
-    print "recall", recall_score(label_test, predictions)
+    #accuracy = accuracy_score(label_test, predictions)
+    #print "acc: ", accuracy
+    #print "precision: ", precision_score(label_test, predictions)
+    #print "recall", recall_score(label_test, predictions)
+    print regr.steps[1][1].support_
+    print "------------------------------"
+    print regr.steps[1][1].support_vectors_
+    print "------------------------------"
+    print regr.steps[1][1].dual_coef_
+    print "------------------------------"
+    print regr.steps[1][1].coef_
+    print "------------------------------"
+    print regr.steps[1][1].intercept_
 
 
-    # get Open Oppts
-    openOppts_predictions = clf.predict(OpenOppts_features)
-    proba_predictions = clf.predict_proba(OpenOppts_features)
+    # The coefficients
+    print 'Coefficients: \n', regr.steps[1][1].coef_
+    # The mean square error
+    print ("Residual sum of squares: %.2f" %
+           np.mean((predictions - label_test) ** 2))
+    # Explained variance score: 1 is perfect prediction
+    print ('Variance score: %.2f' % regr.steps[1][1].score(features_test, label_test))
+
+    # Plot outputs
+    plt.figure()
+    print label_test, predictions
+    residual = Series(label_test - predictions)
+    residual.hist(bins=30)
+    plt.show()
+
+
+
+
+     # get Open Oppts
+    openOppts_predictions = regr.predict(OpenOppts_features)
     OpenOppts['predictions'] = openOppts_predictions
-    OpenOppts['proba_lost_predictions'] = proba_predictions[:, 0]
-    OpenOppts['proba_won_predictions'] = proba_predictions[:, 1]
 
-    #OpenOppts.to_csv('data/output_LogisticRegression.csv')
-
-    dsInternalCRMOppts = pd.read_csv('data/InternalCRMOppts3.csv', low_memory=False)
-    dsInternalCRMOppts = dsInternalCRMOppts.filter(['Opportunity Name', 'Status'])
+    dsInternalCRMOppts = pd.read_csv('data/InternalCRMOppts4.csv', low_memory=False)
+    dsInternalCRMOppts = dsInternalCRMOppts.filter(['Opportunity Name', 'Status', 'Sales Stage Code', 'Actual Close Date'])
     dsInternalCRMOppts['StateCode'] = dsInternalCRMOppts.apply(lambda x: 1 if x['Status'] == 'Won' else 0, axis=1)
 
     matchedOppts = pd.merge(OpenOppts, dsInternalCRMOppts, left_on='Name', right_on='Opportunity Name', how='inner')
@@ -253,4 +269,34 @@ if __name__ == '__main__':
     dd = matchedOppts[matchedOppts['StateCode_y'] == matchedOppts['predictions']]
     dn = matchedOppts[matchedOppts['StateCode_y'] != matchedOppts['predictions']]
     print len(dd), len(dn)
-    matchedOppts.to_csv('data/matchedOpptsLogisticRegression.csv')
+    matchedOppts.to_csv('data/matchedOpptsLinearRegression.csv')
+    '''
+
+
+
+    import matplotlib.pyplot as plt
+    svr_rbf = SVR(kernel='rbf', C=1e3, gamma=0.1)
+    svr_lin = SVR(kernel='linear', C=1e3)
+    svr_poly = SVR(kernel='poly', C=1e3, degree=2)
+    y_rbf = svr_rbf.fit(features_train, label_train).predict(OpenOppts_features)
+    y_lin = svr_lin.fit(features_train, label_train).predict(OpenOppts_features)
+    #y_poly = svr_poly.fit(features_train, label_train).predict(OpenOppts_features)
+
+    ###############################################################################
+    # look at the results
+    #plt.scatter(features_train[:,12], label_train, c='k', label='data')
+    plt.scatter(features_test[:,12], label_test, c='b', label='data')
+    plt.hold('on')
+    plt.plot(np.array(OpenOppts_features['DaysOpen']), y_rbf, c='g', label='RBF model')
+    plt.plot(np.array(OpenOppts_features['DaysOpen']), y_lin, c='r', label='Linear model')
+    #plt.plot(np.array(OpenOppts_features['DaysOpen']), y_poly, c='k', label='Poly model')
+
+    #plt.plot(features_train, y_poly, c='b', label='Polynomial model')
+    plt.xlabel('Days Open')
+    plt.ylabel('Days To Close')
+    plt.title('Support Vector Regression')
+    plt.legend()
+    plt.show()
+    '''
+
+

@@ -5,8 +5,8 @@ Initial CSV file: 38647 Opportunities.
 
 Data cleanup steps:
 1) Remove Test Oppts: 34
-2) Remove 'Estimated Value' outliers: 81
-3) Remove 'Estimated Close Date' putliers: 2
+2) Remove 'Estimated Value' outliers ($0, less than $100, $50mil): 81
+3) Remove 'Estimated Close Date' outliers (2023): 2
 Total Oppts: 38530
 4) Replace 'NULL' with empty space
 5) ~5K Oppts mass imported on 05/07/2010. Some were retroactive, causing wrong dates. Removed on code.
@@ -87,3 +87,4 @@ recall 1.0
 97 out of 124 Predicted Won
 
 fuck sales stage code. biased features.
+

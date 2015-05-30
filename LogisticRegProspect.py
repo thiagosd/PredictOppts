@@ -14,7 +14,7 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from matplotlib import pyplot
-
+'''
 # Load the data
 dsOppts = pd.read_csv('data/AllOppts.csv', low_memory=False)
 dsWonEmails = pd.read_csv('data/Email_Won_Oppts.csv', low_memory=False)
@@ -140,17 +140,16 @@ dsOppts['NumberEmailsForOppt'] = dsOppts.apply(
 # Days Per Stage
 dsOppts['DaysPerSalesStage'] = dsOppts.apply(lambda x: (x['DaysOpen'] / (x['new_salesstagecode'] - 99999999)), axis=1)
 
-# decrease sales stage code
-dsOppts['new_salesstagecode'] = (dsOppts['new_salesstagecode'] - 99999999)
 
 
 ### Separate data
 # dsOppts.fillna(dsOppts.mean(skipna=True), inplace=True)
 dsOppts.fillna(dsOppts.mean(skipna=True), inplace=True)
 
-dsOppts.to_csv('data/dsOppts.csv')
-
-# dsOppts = pd.read_csv('data/dsOppts.csv', low_memory=False)
+#dsOppts.to_csv('data/dsOppts.csv')
+'''
+dsOppts = pd.read_csv('data/dsOppts.csv', low_memory=False)
+dsOppts.drop(dsOppts.index[dsOppts['NumberOpptsForAcctMarket'] > 1], inplace=True)
 
 # use Won and Lost Oppts for train/test, and predict StateCode of Open Oppts
 WonLostOppts = dsOppts[(dsOppts['StateCode'] == 1) | (dsOppts['StateCode'] == 2)]
@@ -171,7 +170,7 @@ WonLostOppts_features = WonLostOppts.filter(
     ['DaysOpen', 'CreatedOnMonth', 'CreatedOnYear',
      'NumberLostOpptsForAcct', 'NumberWonOpptsForAcct', 'NumberOpenOpptsForAcct',
      'new_changerequest', 'new_noofresources', 'ActualValue',
-     'new_reopenedopportunity', 'new_winwireinclusion', 'new_salesstagecode',
+     'new_reopenedopportunity', 'new_winwireinclusion',
      'ProjectDuration', 'HasBDM', 'HasCSP',
      'NumberEmailsForOppt', 'DaysPerSalesStage'])
 
@@ -179,7 +178,7 @@ OpenOppts_features = OpenOppts.filter(
     ['DaysOpen', 'CreatedOnMonth', 'CreatedOnYear',
      'NumberLostOpptsForAcct', 'NumberWonOpptsForAcct', 'NumberOpenOpptsForAcct',
      'new_changerequest', 'new_noofresources', 'ActualValue',
-     'new_reopenedopportunity', 'new_winwireinclusion', 'new_salesstagecode',
+     'new_reopenedopportunity', 'new_winwireinclusion',
      'ProjectDuration', 'HasBDM', 'HasCSP',
      'NumberEmailsForOppt', 'DaysPerSalesStage'])
 
@@ -253,4 +252,4 @@ if __name__ == '__main__':
     dd = matchedOppts[matchedOppts['StateCode_y'] == matchedOppts['predictions']]
     dn = matchedOppts[matchedOppts['StateCode_y'] != matchedOppts['predictions']]
     print len(dd), len(dn)
-    matchedOppts.to_csv('data/matchedOpptsLogisticRegression.csv')
+    matchedOppts.to_csv('data/matchedOpptsLogisticRegProspect.csv')
